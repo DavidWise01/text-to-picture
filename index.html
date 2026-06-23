@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEXT TO PICTURE · A Model Draws Your Words</title>
+<style>
+:root{
+  --paper:#f0ebf5; --ink:#2a2438; --ink-mid:#4a4360; --ink-faint:#8a83a0;
+  --plum:#5b3a87; --plum-light:#7e5bb0; --plum-soft:#e6ddf0; --plum-deep:#3f2860;
+  --gold:#9a7d3a; --rose:#9a4a6a; --green:#3a7a5a;
+  --line:#cbbfdd;
+  --mono:"Courier New",Courier,monospace;
+  --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);
+  background-image:repeating-linear-gradient(0deg, rgba(91,58,135,.03) 0 1px, transparent 1px 3px);
+  color:var(--ink);font-family:var(--serif);line-height:1.5;padding:10px}
+.sheet{max-width:820px;margin:0 auto;border:2.5px solid var(--plum);position:relative}
+.sheet::before{content:'';position:absolute;inset:5px;border:1px solid var(--plum-light);pointer-events:none}
+.inner{padding:20px}
+.masthead{text-align:center;border-bottom:2px solid var(--plum);padding-bottom:10px}
+.mast-eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.24em;color:var(--plum-light);text-transform:uppercase}
+.mast-title{font-size:clamp(20px,4.6vw,32px);letter-spacing:.02em;font-weight:700;margin:5px 0 2px;text-transform:uppercase;color:var(--plum)}
+.mast-sub{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink-mid)}
+.lede{font-size:12px;max-width:660px;margin:10px auto 0;text-align:center;color:var(--ink-mid);line-height:1.55}
+.lede b{color:var(--plum)}
+.stage{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+@media(max-width:600px){.stage{grid-template-columns:1fr}}
+.layer{border:1.5px solid var(--plum-light);padding:8px;background:rgba(126,91,176,.05)}
+.layer h3{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--plum);text-align:center;margin-bottom:6px}
+svg,canvas{width:100%;height:230px;display:block;background:linear-gradient(#dce8f5,#f0ebf5);border-radius:5px}
+.cmdrow{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+#cmd{flex:1;min-width:200px;font-family:var(--mono);font-size:12px;padding:10px 12px;border:1.5px solid var(--plum);border-radius:5px;background:#fff;color:var(--ink);outline:none}
+.cbtn{appearance:none;background:var(--plum);color:#fff;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:10px 16px;border:none;border-radius:5px}
+.cbtn.ghost{background:transparent;color:var(--plum);border:1.5px solid var(--plum)}
+.examples{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.ex{font-family:var(--mono);font-size:9px;padding:4px 8px;border:1px solid var(--line);border-radius:3px;color:var(--ink-mid);background:#fff;cursor:pointer}
+.ex:hover{border-color:var(--plum);color:var(--plum)}
+.engine{font-family:var(--mono);font-size:9.5px;text-align:center;color:var(--ink-faint);margin:6px 0;min-height:14px}
+.engine .live{color:var(--green);font-weight:700} .engine .local{color:var(--gold);font-weight:700}
+.note{font-family:var(--mono);font-size:9.5px;background:var(--plum-soft);border-left:2px solid var(--plum-light);padding:8px 11px;margin:10px 0;line-height:1.7;color:var(--ink-mid)}
+.note b{color:var(--plum)}
+.colophon{margin-top:16px;border-top:2px solid var(--plum);padding-top:10px;text-align:center;font-family:var(--mono);font-size:8.5px;color:var(--ink-mid);letter-spacing:.05em;line-height:1.8}
+.colophon b{color:var(--plum)}
+.lib{font-family:var(--mono);font-size:9px;color:var(--ink-faint);text-align:center;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="sheet"><div class="inner">
+
+<header class="masthead">
+  <div class="mast-eyebrow">Series E · Words In, Picture Out</div>
+  <h1 class="mast-title">Text To Picture</h1>
+  <div class="mast-sub">a model reads your words · lays out a scene · SVG + canvas draw it</div>
+  <p class="lede">Type a description. A <b>model</b> turns it into a <b>scene of shapes</b> — positions, sizes, colors — and both an <b>SVG layer</b> and a <b>canvas layer</b> draw the picture. Not diffusion (no photo of a dragon) — <b>procedural</b>: the words become primitives the model arranges into an image.</p>
+</header>
+
+<div class="stage">
+  <div class="layer">
+    <h3>◆ SVG layer</h3>
+    <svg id="svg" viewBox="0 0 300 230" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <div class="layer">
+    <h3>◆ Canvas layer</h3>
+    <canvas id="cv" width="300" height="230"></canvas>
+  </div>
+</div>
+
+<div class="examples" id="examples"></div>
+<div class="cmdrow">
+  <input id="cmd" placeholder="e.g. a house with a sun and three trees…" />
+  <button class="cbtn" onclick="run()">▶ Draw</button>
+  <button class="cbtn ghost" onclick="scene=[];render();">Clear</button>
+</div>
+<div class="engine" id="engine">type a scene and the model will draw it</div>
+<div class="lib">known words (local): sun · moon · house · tree · cloud · star · hill · water · mountain · bird · flower</div>
+
+<div class="note">
+  <b>honest note:</b> this is <em>not</em> diffusion text-to-image — a standalone artifact can't call an image model. This is <b>text → structured scene → drawn picture</b>: the model returns a list of primitives (circle, rect, triangle, star…) with positions and colors, and the artifact draws them. In the <b>Claude.ai artifact runtime</b> the <b>live API</b> composes scenes from <em>free</em> text; standalone, a <b>local keyword library</b> handles the known words. Same primitive schema, same renderer, both layers.
+</div>
+
+<div class="colophon">
+  TEXT → A MODEL RETURNS A SCENE OF PRIMITIVES → SVG + CANVAS DRAW THE PICTURE<br>
+  PROCEDURAL, NOT DIFFUSION · LIVE API IN THE RUNTIME · LOCAL KEYWORD LIBRARY STANDALONE<br>
+  TEXT TO PICTURE · A PURPLE PAPER · SERIES E · JUNE 2026
+</div>
+
+</div></div>
+<script>
+const svg=document.getElementById('svg');
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const Wd=300, Ht=230;
+let scene=[];   // primitives with fractional coords
+
+// ===== local keyword library: word -> primitives (coords are 0..1 fractions) =====
+const LIB={
+  sun:    [{shape:'circle',x:0.82,y:0.18,r:0.07,color:'#e0a83a'}],
+  moon:   [{shape:'circle',x:0.82,y:0.18,r:0.06,color:'#cfc8e0'}],
+  house:  [{shape:'rect',x:0.5,y:0.66,w:0.18,h:0.18,color:'#b07a5a'},{shape:'triangle',x:0.5,y:0.5,w:0.22,h:0.13,color:'#8a3a3a'},{shape:'rect',x:0.5,y:0.72,w:0.05,h:0.1,color:'#5a3a2a'}],
+  tree:   [{shape:'rect',x:0.5,y:0.72,w:0.025,h:0.13,color:'#6a4a3a'},{shape:'circle',x:0.5,y:0.62,r:0.06,color:'#3a7a4a'}],
+  cloud:  [{shape:'circle',x:0.3,y:0.22,r:0.05,color:'#fbfbff'},{shape:'circle',x:0.36,y:0.22,r:0.06,color:'#fbfbff'},{shape:'circle',x:0.42,y:0.22,r:0.045,color:'#fbfbff'}],
+  star:   [{shape:'star',x:0.2,y:0.16,r:0.035,color:'#e0c83a'}],
+  hill:   [{shape:'ellipse',x:0.5,y:0.92,w:0.55,h:0.18,color:'#4a8a4a'}],
+  water:  [{shape:'rect',x:0.5,y:0.9,w:0.5,h:0.2,color:'#3a6a87'}],
+  mountain:[{shape:'triangle',x:0.5,y:0.55,w:0.28,h:0.28,color:'#8a8a9a'},{shape:'triangle',x:0.5,y:0.5,w:0.1,h:0.08,color:'#fff'}],
+  bird:   [{shape:'bird',x:0.35,y:0.25,r:0.025,color:'#3a3a4a'}],
+  flower: [{shape:'rect',x:0.3,y:0.82,w:0.012,h:0.08,color:'#3a7a4a'},{shape:'circle',x:0.306,y:0.8,r:0.022,color:'#c85a8a'}]
+};
+function localParse(text){
+  text=text.toLowerCase(); const out=[];
+  const NUM={one:1,two:2,three:3,four:4,five:5,six:6};
+  for(const key in LIB){
+    if(text.includes(key)){
+      let n=1;
+      let m=text.match(new RegExp('(\\d+)\\s+'+key));
+      if(m) n=Math.min(parseInt(m[1]),6);
+      else { for(const w in NUM){ if(text.match(new RegExp(w+'\\s+'+key))) n=NUM[w]; } }
+      for(let i=0;i<n;i++){
+        LIB[key].forEach(p=>{ const c=Object.assign({},p);
+          if(n>1){ const base=c.x; c.x = 0.2 + (i+1)*(0.6/(n+1)); if(c.shape!=='rect'||key==='tree'){} }
+          out.push(c);
+        });
+      }
+    }
+  }
+  return out;
+}
+
+// ===== live API path (Claude.ai artifact runtime) =====
+async function apiParse(text){
+  const sys='You convert a scene description into a JSON array of drawing primitives for a 2D picture. '
+    +'Each primitive: {shape, x, y, ...} where x,y and all sizes are FRACTIONS 0..1 of the canvas (0,0 top-left). '
+    +'Shapes: circle (r), rect (w,h, centered on x,y), triangle (w,h, apex up, centered on x,y base), ellipse (w,h), star (r), line (x2,y2). '
+    +'Each has a color hex. Compose a sensible layout (sky things high, ground things low). '
+    +'Respond with ONLY the JSON array, no prose, no markdown.';
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,system:sys,messages:[{role:'user',content:'Scene: '+text}]})
+  });
+  if(!r.ok) throw new Error('api '+r.status);
+  const d=await r.json();
+  const t=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').replace(/```json|```/g,'').trim();
+  return JSON.parse(t);
+}
+
+async function run(){
+  const text=document.getElementById('cmd').value.trim(); if(!text)return;
+  const eng=document.getElementById('engine'); eng.innerHTML='composing…';
+  let prims, used;
+  try{ prims=await apiParse(text); used='live'; }
+  catch(e){ prims=localParse(text); used='local'; }
+  scene=prims; render();
+  eng.innerHTML=(used==='live'
+    ? '<span class="live">● live Claude API</span> composed '+prims.length+' shapes from your words'
+    : (prims.length? '<span class="local">● local library</span> drew '+prims.length+' shapes (known words)'
+                   : '<span class="local">● local library</span> — no known words found; try sun, house, tree, mountain, water…'));
+}
+
+// ===== one renderer, both layers =====
+function px(v,dim){ return v*dim; }
+function render(){
+  // SVG
+  svg.innerHTML='';
+  scene.forEach(p=>drawSVG(p));
+  // canvas
+  ctx.clearRect(0,0,Wd,Ht);
+  // sky gradient already via CSS bg; draw a ground band
+  scene.forEach(p=>drawCanvas(p));
+}
+function ns(t){return document.createElementNS('http://www.w3.org/2000/svg',t);}
+function drawSVG(p){
+  const x=px(p.x,300), y=px(p.y,230);
+  let el;
+  if(p.shape==='circle'){ el=ns('circle'); el.setAttribute('cx',x);el.setAttribute('cy',y);el.setAttribute('r',px(p.r,300)); }
+  else if(p.shape==='ellipse'){ el=ns('ellipse'); el.setAttribute('cx',x);el.setAttribute('cy',y);el.setAttribute('rx',px(p.w,300)/2);el.setAttribute('ry',px(p.h,230)/2); }
+  else if(p.shape==='rect'){ el=ns('rect'); el.setAttribute('x',x-px(p.w,300)/2);el.setAttribute('y',y-px(p.h,230)/2);el.setAttribute('width',px(p.w,300));el.setAttribute('height',px(p.h,230)); }
+  else if(p.shape==='triangle'){ el=ns('polygon'); const w=px(p.w,300),h=px(p.h,230); el.setAttribute('points',`${x},${y-h/2} ${x-w/2},${y+h/2} ${x+w/2},${y+h/2}`); }
+  else if(p.shape==='star'){ el=ns('polygon'); el.setAttribute('points',starPts(x,y,px(p.r,300))); }
+  else if(p.shape==='line'){ el=ns('line'); el.setAttribute('x1',x);el.setAttribute('y1',y);el.setAttribute('x2',px(p.x2||p.x,300));el.setAttribute('y2',px(p.y2||p.y,230));el.setAttribute('stroke',p.color||'#333');el.setAttribute('stroke-width',2); svg.appendChild(el); return; }
+  else if(p.shape==='bird'){ el=ns('path'); const r=px(p.r,300); el.setAttribute('d',`M${x-r},${y} Q${x-r/2},${y-r} ${x},${y} Q${x+r/2},${y-r} ${x+r},${y}`); el.setAttribute('fill','none'); el.setAttribute('stroke',p.color||'#333');el.setAttribute('stroke-width',2); svg.appendChild(el); return; }
+  if(el){ el.setAttribute('fill',p.color||'#5b3a87'); svg.appendChild(el); }
+}
+function starPts(cx,cy,r){
+  let pts=[];
+  for(let i=0;i<10;i++){ const ang=(i*Math.PI/5)-Math.PI/2; const rad=i%2?r*0.45:r; pts.push((cx+rad*Math.cos(ang))+','+(cy+rad*Math.sin(ang))); }
+  return pts.join(' ');
+}
+function drawCanvas(p){
+  const x=px(p.x,300), y=px(p.y,230);
+  ctx.fillStyle=p.color||'#5b3a87'; ctx.strokeStyle=p.color||'#333';
+  if(p.shape==='circle'){ ctx.beginPath();ctx.arc(x,y,px(p.r,300),0,2*Math.PI);ctx.fill(); }
+  else if(p.shape==='ellipse'){ ctx.beginPath();ctx.ellipse(x,y,px(p.w,300)/2,px(p.h,230)/2,0,0,2*Math.PI);ctx.fill(); }
+  else if(p.shape==='rect'){ ctx.fillRect(x-px(p.w,300)/2,y-px(p.h,230)/2,px(p.w,300),px(p.h,230)); }
+  else if(p.shape==='triangle'){ const w=px(p.w,300),h=px(p.h,230); ctx.beginPath();ctx.moveTo(x,y-h/2);ctx.lineTo(x-w/2,y+h/2);ctx.lineTo(x+w/2,y+h/2);ctx.closePath();ctx.fill(); }
+  else if(p.shape==='star'){ const r=px(p.r,300); ctx.beginPath(); for(let i=0;i<10;i++){ const ang=(i*Math.PI/5)-Math.PI/2; const rad=i%2?r*0.45:r; const xx=x+rad*Math.cos(ang),yy=y+rad*Math.sin(ang); i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);} ctx.closePath();ctx.fill(); }
+  else if(p.shape==='line'){ ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(px(p.x2||p.x,300),px(p.y2||p.y,230));ctx.stroke(); }
+  else if(p.shape==='bird'){ const r=px(p.r,300);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-r,y);ctx.quadraticCurveTo(x-r/2,y-r,x,y);ctx.quadraticCurveTo(x+r/2,y-r,x+r,y);ctx.stroke(); }
+}
+
+const EX=['a house with a sun and three trees','mountain water and a moon','two clouds and a sun over a hill','a tree with five stars and a moon','a house a flower and a bird'];
+const exBox=document.getElementById('examples');
+EX.forEach(e=>{ const b=document.createElement('span');b.className='ex';b.textContent=e; b.onclick=()=>{document.getElementById('cmd').value=e;run();}; exBox.appendChild(b); });
+document.getElementById('cmd').addEventListener('keydown',e=>{ if(e.key==='Enter')run(); });
+// seed
+scene=localParse('a house with a sun and three trees'); render();
+</script>
+</div>
+</body>
+</html>
